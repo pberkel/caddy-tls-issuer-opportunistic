@@ -57,6 +57,7 @@ xcaddy build \
             fallback acme {
                 dir https://acme-v02.api.letsencrypt.org/directory
             }
+            resolvers 8.8.8.8 1.1.1.1
         }
     }
 }
@@ -110,6 +111,9 @@ The `dns_challenge_override_domain` on the primary issuer is automatically read;
                 "fallback": {
                   "module": "acme",
                   "ca": "https://acme-v02.api.letsencrypt.org/directory"
+                },
+                "precondition": {
+                  "resolvers": ["8.8.8.8", "1.1.1.1"]
                 }
               }
             ]

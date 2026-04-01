@@ -18,3 +18,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-population of `override_domain` from the primary `ACMEIssuer`'s `dns_challenge_override_domain`, avoiding duplicate configuration.
 - Custom DNS resolver support via the `resolvers` directive.
 - Unit tests covering prerequisite checks, subject transformation, cache eviction, and `PreCheck`/`Issue` consistency.
+- CHANGELOG, README, and Apache 2.0 LICENSE.

@@ -65,7 +65,7 @@ type OpportunisticIssuer struct {
 
 	// Configuration for the DNS-01 prerequisite checker that determines which
 	// issuer is selected at runtime.
-	Precondition DNSPrecondition `json:"prereq_checker"`
+	Precondition DNSPrecondition `json:"precondition"`
 
 	primary  certmagic.Issuer
 	fallback certmagic.Issuer

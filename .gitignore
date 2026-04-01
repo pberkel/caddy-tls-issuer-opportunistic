@@ -25,6 +25,7 @@ vendor
 dist
 caddy-build
 caddy-dist
+caddy
 
 # IDE files
 .idea/
