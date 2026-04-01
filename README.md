@@ -32,7 +32,7 @@ Build Caddy with this module using [`xcaddy`](https://github.com/caddyserver/xca
 ```sh
 xcaddy build \
   --with github.com/pberkel/caddy-issuer-opportunistic \
-  --with github.com/libdns/<your-dns-provider>
+  --with github.com/caddy-dns/<your-dns-provider>
 ```
 
 ## Configuration
@@ -42,10 +42,15 @@ xcaddy build \
 ```caddyfile
 {
     on_demand_tls {
-        ask https://auth.example.internal/check
+        permission http {
+            endpoint https://auth.example.internal/check
+        }
     }
+}
 
+:443 {
     tls {
+        on_demand
         issuer opportunistic {
             primary acme {
                 dir https://acme-v02.api.letsencrypt.org/directory
@@ -60,17 +65,15 @@ xcaddy build \
             resolvers 8.8.8.8 1.1.1.1
         }
     }
-}
-
-*.example.com {
-    tls {
-        on_demand
-    }
     reverse_proxy localhost:8080
 }
 ```
 
+`on_demand` and `issuer opportunistic` must be in the same `tls` block so that they are compiled into a single automation policy. Placing the issuer in the global `tls` block and `on_demand` in a site block produces separate policies and on-demand issuance will not work.
+
 The `dns_challenge_override_domain` on the primary issuer is automatically read; there is no need to repeat it in the `opportunistic` block.
+
+> **Tip:** For deployments requiring DNS resolution checks, per-domain rate limiting, or other advanced admission logic, the [`caddy-tls-permission-policy`](https://github.com/pberkel/caddy-tls-permission-policy) module is a better fit than a plain HTTP endpoint and integrates well with this issuer.
 
 #### Subdirectives
 
@@ -88,7 +91,10 @@ The `dns_challenge_override_domain` on the primary issuer is automatically read;
     "tls": {
       "automation": {
         "on_demand": {
-          "ask": "https://auth.example.internal/check"
+          "permission": {
+            "module": "http",
+            "endpoint": "https://auth.example.internal/check"
+          }
         },
         "policies": [
           {
