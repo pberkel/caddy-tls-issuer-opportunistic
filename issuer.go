@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/caddyserver/certmagic"
+	"github.com/mholt/acmez/v3/acme"
 	"go.uber.org/zap"
 	"golang.org/x/net/publicsuffix"
 
@@ -237,6 +238,19 @@ func (iss *OpportunisticIssuer) IssuerKey() string {
 	return iss.primary.IssuerKey()
 }
 
+// GetRenewalInfo implements certmagic.RenewalInfoGetter by delegating to
+// whichever inner issuer supports ARI. Primary is tried first (consistent
+// with IssuerKey); fallback is tried if primary does not support ARI.
+func (iss *OpportunisticIssuer) GetRenewalInfo(ctx context.Context, cert certmagic.Certificate) (acme.RenewalInfo, error) {
+	if rig, ok := iss.primary.(certmagic.RenewalInfoGetter); ok {
+		return rig.GetRenewalInfo(ctx, cert)
+	}
+	if rig, ok := iss.fallback.(certmagic.RenewalInfoGetter); ok {
+		return rig.GetRenewalInfo(ctx, cert)
+	}
+	return acme.RenewalInfo{}, fmt.Errorf("neither primary nor fallback issuer supports ARI")
+}
+
 // selectAndCache runs the prereq check, caches the result under the name key,
 // and returns the selected issuer.
 func (iss *OpportunisticIssuer) selectAndCache(ctx context.Context, names []string) certmagic.Issuer {
@@ -288,9 +302,10 @@ func namesKey(names []string) string {
 
 // Interface guards
 var (
-	_ caddy.Module          = (*OpportunisticIssuer)(nil)
-	_ caddy.Provisioner     = (*OpportunisticIssuer)(nil)
-	_ certmagic.Issuer      = (*OpportunisticIssuer)(nil)
-	_ certmagic.PreChecker  = (*OpportunisticIssuer)(nil)
-	_ caddytls.ConfigSetter = (*OpportunisticIssuer)(nil)
+	_ caddy.Module                = (*OpportunisticIssuer)(nil)
+	_ caddy.Provisioner           = (*OpportunisticIssuer)(nil)
+	_ certmagic.Issuer            = (*OpportunisticIssuer)(nil)
+	_ certmagic.PreChecker        = (*OpportunisticIssuer)(nil)
+	_ certmagic.RenewalInfoGetter = (*OpportunisticIssuer)(nil)
+	_ caddytls.ConfigSetter       = (*OpportunisticIssuer)(nil)
 )
