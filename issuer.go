@@ -251,6 +251,19 @@ func (iss *OpportunisticIssuer) GetRenewalInfo(ctx context.Context, cert certmag
 	return acme.RenewalInfo{}, fmt.Errorf("neither primary nor fallback issuer supports ARI")
 }
 
+// Revoke implements certmagic.Revoker by delegating to whichever inner issuer
+// supports revocation. Primary is tried first; fallback is tried if primary
+// does not support revocation.
+func (iss *OpportunisticIssuer) Revoke(ctx context.Context, cert certmagic.CertificateResource, reason int) error {
+	if r, ok := iss.primary.(certmagic.Revoker); ok {
+		return r.Revoke(ctx, cert, reason)
+	}
+	if r, ok := iss.fallback.(certmagic.Revoker); ok {
+		return r.Revoke(ctx, cert, reason)
+	}
+	return fmt.Errorf("neither primary nor fallback issuer supports revocation")
+}
+
 // selectAndCache runs the prereq check, caches the result under the name key,
 // and returns the selected issuer.
 func (iss *OpportunisticIssuer) selectAndCache(ctx context.Context, names []string) certmagic.Issuer {
@@ -306,6 +319,7 @@ var (
 	_ caddy.Provisioner           = (*OpportunisticIssuer)(nil)
 	_ certmagic.Issuer            = (*OpportunisticIssuer)(nil)
 	_ certmagic.PreChecker        = (*OpportunisticIssuer)(nil)
+	_ certmagic.Revoker           = (*OpportunisticIssuer)(nil)
 	_ certmagic.RenewalInfoGetter = (*OpportunisticIssuer)(nil)
 	_ caddytls.ConfigSetter       = (*OpportunisticIssuer)(nil)
 )
