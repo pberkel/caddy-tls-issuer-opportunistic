@@ -144,6 +144,8 @@ func (iss *OpportunisticIssuer) Provision(ctx caddy.Context) error {
 		}
 	}
 
+	iss.logger.Info("opportunistic issuer ready")
+
 	return nil
 }
 
