@@ -1,4 +1,4 @@
-module github.com/pberkel/caddy-issuer-opportunistic
+module github.com/pberkel/caddy-tls-issuer-opportunistic
 
 go 1.25.0
 

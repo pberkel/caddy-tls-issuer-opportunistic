@@ -1,4 +1,4 @@
-# caddy-issuer-opportunistic
+# caddy-tls-issuer-opportunistic
 
 A [Caddy](https://caddyserver.com) TLS issuer module (`tls.issuance.opportunistic`) that opportunistically issues wildcard certificates via DNS-01 challenge when DNS prerequisites are met, and falls back to a secondary issuer (typically HTTP-01 or TLS-ALPN-01) otherwise.
 
@@ -31,7 +31,7 @@ Build Caddy with this module using [`xcaddy`](https://github.com/caddyserver/xca
 
 ```sh
 xcaddy build \
-  --with github.com/pberkel/caddy-issuer-opportunistic \
+  --with github.com/pberkel/caddy-tls-issuer-opportunistic \
   --with github.com/caddy-dns/<your-dns-provider>
 ```
 
