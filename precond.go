@@ -17,6 +17,7 @@ package opportunistic
 import (
 	"context"
 	"net"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -83,7 +84,7 @@ func (c *DNSPrecondition) nameQualifies(ctx context.Context, name string) bool {
 	}
 
 	// IP addresses have no DNS zone; DNS-01 cannot validate them.
-	if net.ParseIP(name) != nil {
+	if _, err := netip.ParseAddr(name); err == nil {
 		return false
 	}
 
@@ -130,11 +131,7 @@ func (c *DNSPrecondition) checkCNAMEDelegation(ctx context.Context, name string)
 	}
 
 	// Follow the CNAME chain and check if the final target is the override domain.
-	lookup := c.resolver().LookupCNAME
-	if c.lookupCNAME != nil {
-		lookup = c.lookupCNAME
-	}
-	cname, err := lookup(ctx, challengeName)
+	cname, err := c.resolveCNAME(ctx, challengeName)
 	if err != nil {
 		if c.logger != nil {
 			c.logger.Debug("CNAME lookup failed; DNS-01 prereqs not met",
@@ -156,21 +153,34 @@ func (c *DNSPrecondition) checkCNAMEDelegation(ctx context.Context, name string)
 	return result == overrideDomain
 }
 
-// resolver returns a net.Resolver using the configured Resolvers, or the
-// system default resolver if none are configured.
-func (c *DNSPrecondition) resolver() *net.Resolver {
+// resolveCNAME looks up the CNAME for host. When custom resolvers are
+// configured, each is tried in order and the first successful result is
+// returned. Falls back to the system resolver when no custom resolvers are
+// configured.
+func (c *DNSPrecondition) resolveCNAME(ctx context.Context, host string) (string, error) {
+	if c.lookupCNAME != nil {
+		return c.lookupCNAME(ctx, host)
+	}
 	if len(c.Resolvers) == 0 {
-		return net.DefaultResolver
+		return net.DefaultResolver.LookupCNAME(ctx, host)
 	}
-	addr := c.Resolvers[0]
-	if _, _, err := net.SplitHostPort(addr); err != nil {
-		// No port specified — default to 53.
-		addr = net.JoinHostPort(addr, "53")
+	var lastErr error
+	for _, addr := range c.Resolvers {
+		if _, _, err := net.SplitHostPort(addr); err != nil {
+			// No port specified — default to 53.
+			addr = net.JoinHostPort(addr, "53")
+		}
+		r := &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "udp", addr)
+			},
+		}
+		cname, err := r.LookupCNAME(ctx, host)
+		if err == nil {
+			return cname, nil
+		}
+		lastErr = err
 	}
-	return &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "udp", addr)
-		},
-	}
+	return "", lastErr
 }

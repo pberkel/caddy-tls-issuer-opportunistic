@@ -34,8 +34,9 @@ import (
 // primary and fallback accept the same block syntax as any tls.issuance module
 // (e.g. the built-in "acme" module). Both are required.
 //
-// resolvers sets custom DNS servers used by future NS-record prerequisite
-// checks (currently a no-op; see DNSPrecondition.Resolvers).
+// resolvers sets custom DNS servers used for CNAME delegation lookups during
+// DNS-01 prerequisite checks. Multiple addresses may be provided; they are
+// tried in order and the first to respond successfully is used.
 func (iss *OpportunisticIssuer) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	d.Next() // consume "opportunistic"
 	if d.NextArg() {
@@ -69,6 +70,7 @@ func (iss *OpportunisticIssuer) UnmarshalCaddyfile(d *caddyfile.Dispenser) error
 			if len(iss.Precondition.Resolvers) == 0 {
 				return d.ArgErr()
 			}
+			// Resolvers are tried in order; the first to respond successfully is used.
 
 		default:
 			return d.Errf("unknown subdirective '%s'", d.Val())

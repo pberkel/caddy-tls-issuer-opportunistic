@@ -24,7 +24,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"net"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -131,6 +133,23 @@ func (iss *OpportunisticIssuer) Provision(ctx caddy.Context) error {
 	}
 	if iss.fallback == nil {
 		return fmt.Errorf("fallback issuer is required")
+	}
+
+	// Validate resolver addresses early so misconfigured values are caught at
+	// startup rather than at CNAME lookup time.
+	for _, addr := range iss.Precondition.Resolvers {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			// No port — treat entire value as host, default port 53.
+			host, port = addr, "53"
+		}
+		if host == "" {
+			return fmt.Errorf("invalid resolver %q: host must not be empty", addr)
+		}
+		portNum, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || portNum == 0 {
+			return fmt.Errorf("invalid resolver %q: port must be a number between 1 and 65535", addr)
+		}
 	}
 
 	// Auto-populate the prereq checker's override domain from the primary
