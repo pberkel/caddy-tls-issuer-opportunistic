@@ -5,13 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-
-- ARI support (`GetRenewalInfo`) delegating to the primary issuer, with fallback to the secondary issuer if primary does not support ARI (RFC 8739).
-
-## [1.0.0] - 2026-04-01
+## [1.0.0] - 2026-04-10
 
 ### Added
 
@@ -20,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic subject transformation — hostnames are promoted to wildcard form (e.g. `www.example.com` → `*.example.com`) when prerequisites are met, with no separate `subject_transformer` directive required.
 - Fail-closed behaviour: any DNS lookup error, missing override domain, IP address, or apex domain routes to the fallback issuer.
 - `PreCheck`/`Issue` consistency cache: issuer selection made during `PreCheck` is preserved for the subsequent `Issue` call, bounded by a 5-minute TTL and a maximum of 256 entries.
+- ARI support (`GetRenewalInfo`) delegating to the primary issuer, with fallback to the secondary issuer if primary does not support ARI (RFC 8739).
+- Revocation support (`Revoke`) delegating to the primary issuer, with fallback to the secondary issuer if primary does not support revocation.
 - Caddyfile support via `issuer opportunistic { primary ... fallback ... resolvers ... }`.
 - Auto-population of `override_domain` from the primary `ACMEIssuer`'s `dns_challenge_override_domain`, avoiding duplicate configuration.
 - Custom DNS resolver support via the `resolvers` directive.

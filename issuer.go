@@ -51,8 +51,6 @@ func init() {
 // otherwise it falls back to the secondary issuer (typically HTTP-01 or
 // TLS-ALPN-01). Subject transformation is registered automatically via
 // SetConfig so no separate subject_transformer directive is required.
-//
-// EXPERIMENTAL: Subject to change.
 type OpportunisticIssuer struct {
 	// The issuer to use when DNS-01 challenge prerequisites are met.
 	// Any tls.issuance module is accepted. The primary issuer must be capable

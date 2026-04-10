@@ -4,17 +4,13 @@ A [Caddy](https://caddyserver.com) TLS issuer module (`tls.issuance.opportunisti
 
 Designed for on-demand TLS deployments where some hostnames have DNS-01 delegation configured and others do not.
 
-> **Experimental:** The configuration interface may change before a stable release.
-
 ## How it works
 
-When Caddy needs a certificate for a hostname, the opportunistic issuer:
+When Caddy needs a TLS certificate for a hostname, the opportunistic issuer:
 
 1. Checks whether `_acme-challenge.<base>` is equal to, or has a CNAME record pointing to, the configured `dns_challenge_override_domain`.
 2. If the check passes, the hostname is transformed to its wildcard form (e.g. `www.example.com` → `*.example.com`) and the certificate is issued by the **primary** issuer using DNS-01.
 3. If the check fails — including on any DNS lookup error — the original hostname is kept and the certificate is issued by the **fallback** issuer using HTTP-01 or TLS-ALPN-01.
-
-Subject transformation is registered automatically; no separate `subject_transformer` directive is required.
 
 The DNS prerequisite check is fail-closed: any error (NXDOMAIN, timeout, network failure, missing override domain) routes to the fallback issuer.
 
@@ -32,6 +28,7 @@ Build Caddy with this module using [`xcaddy`](https://github.com/caddyserver/xca
 ```sh
 xcaddy build \
   --with github.com/pberkel/caddy-tls-issuer-opportunistic \
+  --with github.com/pberkel/caddy-tls-permission-policy \
   --with github.com/caddy-dns/<your-dns-provider>
 ```
 
@@ -42,8 +39,8 @@ xcaddy build \
 ```caddyfile
 {
     on_demand_tls {
-        permission http {
-            endpoint https://auth.example.internal/check
+        permission policy {
+            resolves_to my-caddy-server.example.net
         }
     }
 }
@@ -73,7 +70,7 @@ xcaddy build \
 
 The `dns_challenge_override_domain` on the primary issuer is automatically read; there is no need to repeat it in the `opportunistic` block.
 
-> **Tip:** For deployments requiring DNS resolution checks, per-domain rate limiting, or other advanced admission logic, the [`caddy-tls-permission-policy`](https://github.com/pberkel/caddy-tls-permission-policy) module is a better fit than a plain HTTP endpoint and integrates well with this issuer.
+See the [`caddy-tls-permission-policy`](https://github.com/pberkel/caddy-tls-permission-policy) documentation for the full set of policy options (`allow_regexp`, `deny_subdomain`, `max_subdomain_depth`, etc.).
 
 #### Subdirectives
 
@@ -92,8 +89,8 @@ The `dns_challenge_override_domain` on the primary issuer is automatically read;
       "automation": {
         "on_demand": {
           "permission": {
-            "module": "http",
-            "endpoint": "https://auth.example.internal/check"
+            "module": "policy",
+            "resolves_to": ["my-caddy-server.example.net"]
           }
         },
         "policies": [
