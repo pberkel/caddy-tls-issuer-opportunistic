@@ -15,6 +15,8 @@
 package opportunistic
 
 import (
+	"strconv"
+
 	"github.com/caddyserver/certmagic"
 
 	"github.com/caddyserver/caddy/v2/caddyconfig"
@@ -71,6 +73,16 @@ func (iss *OpportunisticIssuer) UnmarshalCaddyfile(d *caddyfile.Dispenser) error
 				return d.ArgErr()
 			}
 			// Resolvers are tried in order; the first to respond successfully is used.
+
+		case "debug":
+			if !d.NextArg() {
+				return d.ArgErr()
+			}
+			v, err := strconv.ParseBool(d.Val())
+			if err != nil {
+				return d.Errf("invalid boolean value for debug: %s", d.Val())
+			}
+			iss.Debug = v
 
 		default:
 			return d.Errf("unknown subdirective '%s'", d.Val())

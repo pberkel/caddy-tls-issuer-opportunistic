@@ -34,6 +34,7 @@ import (
 	"github.com/caddyserver/certmagic"
 	"github.com/mholt/acmez/v3/acme"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/caddyserver/caddy/v2"
@@ -68,10 +69,26 @@ type OpportunisticIssuer struct {
 	// issuer is selected at runtime.
 	Precondition DNSPrecondition `json:"precondition"`
 
+	// When true, DNS precondition evaluation details are logged at info level
+	// regardless of the global Caddy log level. When false (the default), the
+	// same details are only emitted when Caddy's global log level is set to debug.
+	Debug bool `json:"debug,omitempty"`
+
 	primary  certmagic.Issuer
 	fallback certmagic.Issuer
 	logger   *zap.Logger
 	cache    *issuerCache
+}
+
+// debugCheck returns a zap.CheckedEntry for a debug-level message. When the
+// Debug flag is enabled the entry is checked at info level so it is always
+// emitted regardless of the global Caddy log level. When Debug is false the
+// entry is only emitted when Caddy's global log level includes debug.
+func (iss *OpportunisticIssuer) debugCheck(msg string) *zapcore.CheckedEntry {
+	if iss.Debug {
+		return iss.logger.Check(zapcore.InfoLevel, msg)
+	}
+	return iss.logger.Check(zapcore.DebugLevel, msg)
 }
 
 // issuerCache records the issuer selected during PreCheck, keyed by the
@@ -108,6 +125,7 @@ func (OpportunisticIssuer) CaddyModule() caddy.ModuleInfo {
 func (iss *OpportunisticIssuer) Provision(ctx caddy.Context) error {
 	iss.logger = ctx.Logger()
 	iss.Precondition.logger = iss.logger.Named("prereq_checker")
+	iss.Precondition.Debug = iss.Debug
 	iss.cache = &issuerCache{entries: make(map[string]issuerCacheEntry)}
 
 	if iss.PrimaryRaw != nil {
@@ -315,12 +333,14 @@ func (iss *OpportunisticIssuer) selectAndCache(ctx context.Context, names []stri
 // selectIssuer runs the prereq check and returns the appropriate inner issuer.
 func (iss *OpportunisticIssuer) selectIssuer(ctx context.Context, names []string) certmagic.Issuer {
 	if iss.Precondition.Met(ctx, names) {
-		iss.logger.Debug("DNS-01 prerequisites met; using primary issuer",
-			zap.Strings("names", names))
+		if ce := iss.debugCheck("DNS-01 prerequisites met; using primary issuer"); ce != nil {
+			ce.Write(zap.Strings("names", names))
+		}
 		return iss.primary
 	}
-	iss.logger.Debug("DNS-01 prerequisites not met; using fallback issuer",
-		zap.Strings("names", names))
+	if ce := iss.debugCheck("DNS-01 prerequisites not met; using fallback issuer"); ce != nil {
+		ce.Write(zap.Strings("names", names))
+	}
 	return iss.fallback
 }
 

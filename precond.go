@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -52,8 +53,25 @@ type DNSPrecondition struct {
 	// Port defaults to 53 if omitted. If empty, the system resolver is used.
 	Resolvers []string `json:"resolvers,omitempty"`
 
+	// When true, per-request DNS precondition evaluation details are logged at
+	// info level regardless of the global Caddy log level. When false (the
+	// default), the same details are only emitted when Caddy's global log level
+	// is set to debug.
+	Debug bool `json:"debug,omitempty"`
+
 	logger      *zap.Logger
 	lookupCNAME func(ctx context.Context, host string) (string, error) // overridden in tests
+}
+
+// debugCheck returns a zap.CheckedEntry for a debug-level message. When the
+// Debug flag is enabled the entry is checked at info level so it is always
+// emitted regardless of the global Caddy log level. When Debug is false the
+// entry is only emitted when Caddy's global log level includes debug.
+func (c *DNSPrecondition) debugCheck(msg string) *zapcore.CheckedEntry {
+	if c.Debug {
+		return c.logger.Check(zapcore.InfoLevel, msg)
+	}
+	return c.logger.Check(zapcore.DebugLevel, msg)
 }
 
 // Met returns true only if every name in names satisfies the DNS-01
@@ -66,9 +84,8 @@ func (c *DNSPrecondition) Met(ctx context.Context, names []string) bool {
 	}
 	for _, name := range names {
 		if !c.nameQualifies(ctx, name) {
-			if c.logger != nil {
-				c.logger.Debug("name does not meet DNS-01 prerequisites",
-					zap.String("name", name))
+			if ce := c.debugCheck("name does not meet DNS-01 prerequisites"); ce != nil {
+				ce.Write(zap.String("name", name))
 			}
 			return false
 		}
@@ -133,8 +150,8 @@ func (c *DNSPrecondition) checkCNAMEDelegation(ctx context.Context, name string)
 	// Follow the CNAME chain and check if the final target is the override domain.
 	cname, err := c.resolveCNAME(ctx, challengeName)
 	if err != nil {
-		if c.logger != nil {
-			c.logger.Debug("CNAME lookup failed; DNS-01 prereqs not met",
+		if ce := c.debugCheck("CNAME lookup failed; DNS-01 prereqs not met"); ce != nil {
+			ce.Write(
 				zap.String("challenge_name", challengeName),
 				zap.String("override_domain", overrideDomain),
 				zap.Error(err))
@@ -143,8 +160,8 @@ func (c *DNSPrecondition) checkCNAMEDelegation(ctx context.Context, name string)
 	}
 
 	result := strings.TrimSuffix(cname, ".")
-	if c.logger != nil {
-		c.logger.Debug("CNAME lookup result",
+	if ce := c.debugCheck("CNAME lookup result"); ce != nil {
+		ce.Write(
 			zap.String("challenge_name", challengeName),
 			zap.String("cname", result),
 			zap.String("override_domain", overrideDomain),

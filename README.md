@@ -60,6 +60,7 @@ xcaddy build \
                 dir https://acme-v02.api.letsencrypt.org/directory
             }
             resolvers 8.8.8.8 1.1.1.1
+            debug false
         }
     }
     reverse_proxy localhost:8080
@@ -79,6 +80,7 @@ See the [`caddy-tls-permission-policy`](https://github.com/pberkel/caddy-tls-per
 | `primary <module> { ... }` | Yes | Issuer used when DNS prerequisites are met. Must support wildcard certificates (DNS-01). |
 | `fallback <module> { ... }` | Yes | Issuer used when DNS prerequisites are not met. Typically an ACME issuer using HTTP-01 or TLS-ALPN-01. |
 | `resolvers <addr> ...` | No | Custom DNS resolvers for CNAME lookups (e.g. `8.8.8.8`). Port defaults to 53. Uses the system resolver if omitted. |
+| `debug <bool>` | No | When `true`, DNS prerequisite evaluation details are emitted at info level regardless of the global Caddy log level. Default: `false`. |
 
 ### JSON
 
@@ -117,7 +119,8 @@ See the [`caddy-tls-permission-policy`](https://github.com/pberkel/caddy-tls-per
                 },
                 "precondition": {
                   "resolvers": ["8.8.8.8", "1.1.1.1"]
-                }
+                },
+                "debug": false
               }
             ]
           }
