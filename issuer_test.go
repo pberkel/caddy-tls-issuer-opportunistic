@@ -51,11 +51,13 @@ func (s *configSetterIssuer) SetConfig(cfg *certmagic.Config) { s.cfg = cfg }
 // newTestIssuer builds an OpportunisticIssuer with the given inner issuers and
 // precondition, bypassing Provision so tests need no Caddy context.
 func newTestIssuer(primary, fallback certmagic.Issuer, precond DNSPrecondition) *OpportunisticIssuer {
+	logger := zap.NewNop()
+	precond.logger = logger.Named("prereq_checker")
 	return &OpportunisticIssuer{
 		primary:      primary,
 		fallback:     fallback,
 		Precondition: precond,
-		logger:       zap.NewNop(),
+		logger:       logger,
 		cache:        &issuerCache{entries: make(map[string]issuerCacheEntry)},
 	}
 }

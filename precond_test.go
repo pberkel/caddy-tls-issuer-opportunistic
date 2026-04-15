@@ -53,10 +53,25 @@ func TestDNSPrecondition_Met(t *testing.T) {
 			want:  false,
 		},
 		{
-			name:           "apex domain does not qualify",
+			name:           "apex domain qualifies when CNAME delegation present",
 			overrideDomain: "acme.example.net",
 			names:          []string{"example.com"},
-			want:           false,
+			lookupCNAME: func(_ context.Context, host string) (string, error) {
+				if host == "_acme-challenge.example.com" {
+					return "acme.example.net.", nil
+				}
+				return "", fmt.Errorf("unexpected host: %s", host)
+			},
+			want: true,
+		},
+		{
+			name:           "apex domain does not qualify without matching CNAME",
+			overrideDomain: "acme.example.net",
+			names:          []string{"example.com"},
+			lookupCNAME: func(_ context.Context, _ string) (string, error) {
+				return "", fmt.Errorf("NXDOMAIN")
+			},
+			want: false,
 		},
 		{
 			name:           "challenge name equals override domain (fast path, no lookup)",
@@ -130,10 +145,13 @@ func TestDNSPrecondition_Met(t *testing.T) {
 			want: true,
 		},
 		{
-			name:           "public suffix apex does not qualify",
+			name:           "public suffix apex does not qualify without matching CNAME",
 			overrideDomain: "acme.example.net",
 			names:          []string{"example.co.uk"},
-			want:           false,
+			lookupCNAME: func(_ context.Context, _ string) (string, error) {
+				return "", fmt.Errorf("NXDOMAIN")
+			},
+			want: false,
 		},
 		{
 			name:           "subdomain of public suffix uses correct challenge name",

@@ -68,6 +68,9 @@ type DNSPrecondition struct {
 // emitted regardless of the global Caddy log level. When Debug is false the
 // entry is only emitted when Caddy's global log level includes debug.
 func (c *DNSPrecondition) debugCheck(msg string) *zapcore.CheckedEntry {
+	if c.logger == nil {
+		return nil
+	}
 	if c.Debug {
 		return c.logger.Check(zapcore.InfoLevel, msg)
 	}
