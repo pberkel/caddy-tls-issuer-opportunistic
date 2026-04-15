@@ -9,7 +9,7 @@ Designed for on-demand TLS deployments where some hostnames have DNS-01 delegati
 When Caddy needs a TLS certificate for a hostname, the opportunistic issuer:
 
 1. Checks whether `_acme-challenge.<base>` is equal to, or has a CNAME record pointing to, the configured `dns_challenge_override_domain`.
-2. If the check passes, the hostname is transformed to its wildcard form (e.g. `www.example.com` → `*.example.com`) and the certificate is issued by the **primary** issuer using DNS-01.
+2. If the check passes and the hostname is a subdomain, it is transformed to its wildcard form (e.g. `www.example.com` → `*.example.com`) and the certificate is issued by the **primary** issuer using DNS-01. Apex domains (e.g. `example.com`) receive a specific certificate directly via DNS-01 — no wildcard transformation is applied.
 3. If the check fails — including on any DNS lookup error — the original hostname is kept and the certificate is issued by the **fallback** issuer using HTTP-01 or TLS-ALPN-01.
 
 The DNS prerequisite check is fail-closed: any error (NXDOMAIN, timeout, network failure, missing override domain) routes to the fallback issuer.
@@ -148,7 +148,8 @@ Hostnames whose base domain does not have this delegation will automatically use
 | `www.example.com` | Yes | `*.example.com` | Primary (DNS-01) |
 | `api.v2.example.com` | Yes (`_acme-challenge.v2.example.com`) | `*.v2.example.com` | Primary (DNS-01) |
 | `www.example.com` | No | `www.example.com` | Fallback (HTTP-01) |
-| `example.com` (apex) | — | `example.com` | Fallback (HTTP-01) |
+| `example.com` (apex) | Yes (`_acme-challenge.example.com`) | `example.com` | Primary (DNS-01) |
+| `example.com` (apex) | No | `example.com` | Fallback (HTTP-01) |
 | `*.example.com` | — | `*.example.com` | Primary (DNS-01) |
 | IP address | — | — | Fallback |
 

@@ -105,40 +105,45 @@ func (c *DNSPrecondition) nameQualifies(ctx context.Context, name string) bool {
 		return false
 	}
 
-	// Verify that the ACME challenge subdomain for the wildcard that would
-	// cover this name is either equal to the override domain or CNAMEd to it.
-	// Without an override domain we have no way to confirm DNS-01 will work,
-	// so we fail closed and let the fallback issuer handle it.
+	// Verify that the ACME challenge subdomain for this name is either equal
+	// to the override domain or CNAMEd to it. Without an override domain we
+	// have no way to confirm DNS-01 will work, so we fail closed and let the
+	// fallback issuer handle it.
 	if c.OverrideDomain == "" {
 		return false
 	}
 	return c.checkCNAMEDelegation(ctx, name)
 }
 
-// checkCNAMEDelegation checks that the ACME challenge subdomain for name's
-// wildcard form is equal to, or has a CNAME chain leading to, OverrideDomain.
+// checkCNAMEDelegation checks that the ACME challenge subdomain for name is
+// equal to, or has a CNAME chain leading to, OverrideDomain.
+//
+// For subdomains the challenge name is derived from the wildcard that would
+// cover the name (e.g. "www.example.com" → "_acme-challenge.example.com").
+// For apex domains the challenge name is "_acme-challenge.<apex>" directly,
+// since DNS-01 can validate apex domains without a wildcard certificate.
 //
 // The check fails closed: any lookup error (NXDOMAIN, timeout, network error)
 // returns false so that a broken delegation falls back to HTTP-01 rather than
-// attempting a wildcard DNS-01 that is guaranteed to fail.
+// attempting a DNS-01 challenge that is guaranteed to fail.
 func (c *DNSPrecondition) checkCNAMEDelegation(ctx context.Context, name string) bool {
-	// Determine the base domain of the wildcard that would be requested.
-	// For "www.example.com" the wildcard is "*.example.com", so the ACME
-	// challenge lands at "_acme-challenge.example.com".
-	// For "api.v2.example.com" the wildcard is "*.v2.example.com", so the
-	// challenge lands at "_acme-challenge.v2.example.com".
 	registered, err := publicsuffix.EffectiveTLDPlusOne(name)
 	if err != nil {
-		// Unknown or invalid domain — cannot form a valid wildcard.
+		// Unknown or invalid domain — cannot determine challenge name.
 		return false
 	}
+
+	// Determine the challenge name:
+	//   apex "example.com"         → "_acme-challenge.example.com"
+	//   sub  "www.example.com"     → "_acme-challenge.example.com"
+	//   deep "api.v2.example.com"  → "_acme-challenge.v2.example.com"
+	var challengeName string
 	if name == registered {
-		// Apex domain: toWildcard returns it unchanged, so no wildcard cert
-		// will be requested and DNS-01 selection is unnecessary.
-		return false
+		challengeName = "_acme-challenge." + name
+	} else {
+		dot := strings.Index(name, ".")
+		challengeName = "_acme-challenge." + name[dot+1:]
 	}
-	dot := strings.Index(name, ".")
-	challengeName := "_acme-challenge." + name[dot+1:]
 
 	overrideDomain := strings.TrimSuffix(c.OverrideDomain, ".")
 

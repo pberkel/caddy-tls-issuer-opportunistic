@@ -13,8 +13,9 @@
 // limitations under the License.
 
 // Package opportunistic provides a TLS certificate issuer that uses DNS-01
-// challenges (and issues wildcard certificates) when prerequisites are met,
-// falling back to HTTP-01 or TLS-ALPN-01 for specific certificates otherwise.
+// challenges when prerequisites are met, falling back to HTTP-01 or
+// TLS-ALPN-01 otherwise. For subdomains a wildcard certificate is issued via
+// DNS-01; for apex domains a specific certificate is issued via DNS-01.
 // Subject transformation is handled automatically by the issuer itself.
 
 package opportunistic
