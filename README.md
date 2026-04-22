@@ -69,6 +69,42 @@ xcaddy build \
 
 `on_demand` and `issuer opportunistic` must be in the same `tls` block so that they are compiled into a single automation policy. Placing the issuer in the global `tls` block and `on_demand` in a site block produces separate policies and on-demand issuance will not work.
 
+Alternatively, `opportunistic` can be set as the global default issuer via the `cert_issuer` global option:
+
+```caddyfile
+{
+    on_demand_tls {
+        permission policy {
+            resolves_to my-caddy-server.example.net
+        }
+    }
+    cert_issuer opportunistic {
+        primary acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+            dns <provider> {
+                # provider-specific credentials
+            }
+            dns_challenge_override_domain acme.example.net
+        }
+        fallback acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+        }
+        resolvers 8.8.8.8 1.1.1.1
+    }
+}
+
+:443 {
+    tls {
+        on_demand
+    }
+    reverse_proxy localhost:8080
+}
+```
+
+This is equivalent to the per-site form but avoids repeating the issuer configuration across multiple site blocks.
+
+> **Note:** `cert_issuer` cannot be combined with a catch-all `https://` site block that has its own explicit `issuer` directives in the `tls` block. Both produce a default automation policy and Caddy will refuse to start with a conflict error. Use one or the other, not both.
+
 The `dns_challenge_override_domain` on the primary issuer is automatically read; there is no need to repeat it in the `opportunistic` block.
 
 See the [`caddy-tls-permission-policy`](https://github.com/pberkel/caddy-tls-permission-policy) documentation for the full set of policy options (`allow_regexp`, `deny_subdomain`, `max_subdomain_depth`, etc.).
